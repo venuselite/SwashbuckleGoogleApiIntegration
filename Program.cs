@@ -4,6 +4,8 @@ using Google.Apis.Auth.AspNetCore3;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.PeopleService.v1;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Interfaces;
 using Microsoft.OpenApi.Models;
@@ -26,17 +28,19 @@ ClientSecrets clientSecrets = GoogleClientSecrets.FromFile(clientSecretFilename)
 services
     .AddAuthentication(o =>
     {
-        o.DefaultChallengeScheme = GoogleOpenIdConnectDefaults.AuthenticationScheme;
-        o.DefaultForbidScheme = GoogleOpenIdConnectDefaults.AuthenticationScheme;
-        o.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        o.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
     })
-    .AddCookie()
-    .AddGoogleOpenIdConnect(options =>
+    .AddJwtBearer(options =>
     {
-        options.ClientId = clientSecrets.ClientId;
-        options.ClientSecret = clientSecrets.ClientSecret;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters()
+        {
+            ValidateIssuer = false
+        };
     });
 
+services.AddHttpContextAccessor();
 services.AddEndpointsApiExplorer();
 services.AddRouting(options => options.LowercaseUrls = true);
 services.AddSwaggerGen(options =>
@@ -48,7 +52,8 @@ services.AddSwaggerGen(options =>
         Type = SecuritySchemeType.OAuth2,
         Extensions = new Dictionary<string, IOpenApiExtension>
         {
-            {"x-tokenName", new OpenApiString("id_token")}
+            // {"x-tokenName", new OpenApiString("id_token")},
+            {"x-tokenName", new OpenApiString("access_token")}
         },
         Flows = new OpenApiOAuthFlows
         {
@@ -106,9 +111,9 @@ app.UseSwaggerUI(c =>
     c.OAuthClientId(clientSecrets.ClientId);
     c.OAuthClientSecret(clientSecrets.ClientSecret);
     c.OAuthUseBasicAuthenticationWithAccessCodeGrant();
+    // perhaps configure a custom redirect rule
 });
 
-// app.UseMiddleware<RequestResponseLoggingMiddleware>();
 app.UseCors(policyBuilder =>
 {
     policyBuilder
@@ -121,7 +126,7 @@ app.UseCors(policyBuilder =>
 
 app.UseRouting();
 app.UseAuthentication();
-app.UseAuthorization();
+// app.UseAuthorization();
 
 app.MapControllers();
 app.Logger.LogInformation(

@@ -9,6 +9,7 @@
     <ItemGroup>
         <PackageReference Include="Google.Apis.Auth.AspNetCore3" Version="1.55.0" />
         <PackageReference Include="Google.Apis.PeopleService.v1" Version="1.55.0.2588" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.2" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
     </ItemGroup>
 

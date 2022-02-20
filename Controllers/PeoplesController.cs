@@ -1,10 +1,9 @@
-using Google.Apis.Auth.AspNetCore3;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.PeopleService.v1;
 using Google.Apis.PeopleService.v1.Data;
 using Google.Apis.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication;
 
 namespace GoogleApiSwashbuckle.Controllers;
 
@@ -13,15 +12,30 @@ namespace GoogleApiSwashbuckle.Controllers;
 [Route("api/v1/[controller]")]
 public class PeoplesController
 {
-    [GoogleScopedAuthorize(
-        PeopleServiceService.ScopeConstants.ContactsOtherReadonly)
-    ]
-    [HttpGet]
-    [Authorize]
-    [Route("search/{query}")]
-    public async Task<ActionResult<List<string>>> Search([FromServices] IGoogleAuthProvider auth, string query)
+    private readonly IHttpContextAccessor httpContextAccessor;
+
+    public PeoplesController(IHttpContextAccessor httpContextAccessor)
     {
-        GoogleCredential credential = await auth.GetCredentialAsync();
+        this.httpContextAccessor = httpContextAccessor;
+    }
+
+
+    [HttpGet]
+    [Route("search/{query}")]
+    public async Task<ActionResult<List<string>>> Search(string query)
+    {
+        string? accessToken = httpContextAccessor
+            .HttpContext?
+            .Request
+            .Headers["Authorization"]
+            .FirstOrDefault();
+
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            throw new Exception("Unauthenticated");
+        }
+        
+        GoogleCredential credential = GoogleCredential.FromAccessToken(accessToken.Replace("Bearer ", ""));
         PeopleServiceService peopleService = new(new BaseClientService.Initializer
         {
             HttpClientInitializer = credential,
